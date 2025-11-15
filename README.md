@@ -36,6 +36,3 @@ Disallow: /preview/
 Disallow: /busca/
 Disallow: /informe-publicitario/
 ```
-## Extras
-- Newspaper3k: Além do scrapping com soup, surgiu uma outra alternativa: Utilziando o Newspaper3k, que é um pacote específico para sites de notícias, conseguimos fazer o parse do conteúdo de forma mais simples.
-- TF-IDF + SequenceMatcher: Vetorização/Análise Semântica e Análise Sintática, para verificar a similaridade entre dois (ou mais, posteriormente) sites, assim podemos analisar a incidência de um conteúdo, comparando com vários sites sobre o mesmo tema.

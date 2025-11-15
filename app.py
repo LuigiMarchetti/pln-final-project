@@ -103,7 +103,7 @@ class WebScrapingApp:
             print("❌ Algumas execuções falharam. Verifique os logs.")
             logging.warning("Execução completa com falhas")
 
-    def run_buy_and_hold(self):
+    def run(self):
         """Executa scraping apenas uma vez"""
 
         # Recupera ID e nome da empresa pelo ticker
@@ -157,7 +157,7 @@ def main():
 
 
     # Cria instância da aplicação de scraping
-    app = WebScrapingApp(ticker=ticker_arg, months_ago=months_arg)
+    web_scrapping_app = WebScrapingApp(ticker=ticker_arg, months_ago=months_arg)
 
     # Cabeçalho visual
     print("=" * 60)
@@ -165,7 +165,7 @@ def main():
     print("=" * 60)
 
     # Executa a única vez
-    app.run_buy_and_hold()
+    web_scrapping_app.run()
 
 # Ponto de entrada da aplicação
 if __name__ == "__main__":

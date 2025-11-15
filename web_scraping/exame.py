@@ -10,7 +10,6 @@ import string, re
 from urllib.parse import urljoin
 from datetime import timedelta, datetime
 
-from utils.database import initialize_database
 from utils.news_service import get_news_service
 
 
@@ -61,9 +60,6 @@ def processar(texto):
     - Lemmatização (forma canônica)
     Retorna dicionário com tokens, stems e lemmas.
     """
-    if not isinstance(texto, str):
-        texto = str(texto)
-
     texto = texto.lower()
     texto = texto.translate(str.maketrans("", "", string.punctuation))
     texto = re.sub(r'[^a-záéíóúâêîôûãõç ]', ' ', texto)
@@ -77,7 +73,8 @@ def processar(texto):
 # ---- Scraping ----
 headers = {"User-Agent": "Mozilla/5.0"}  # Header para evitar bloqueios no request
 
-def parse_relative_date(texto) -> timedelta | None:
+
+def parse_relative_date(texto):
     """
     Converte expressões como 'há 2 dias', 'há 5 horas', 'há 4 semanas', 'há um mês'
     em timedelta. Retorna None se não reconhecer o padrão.
@@ -94,11 +91,8 @@ def parse_relative_date(texto) -> timedelta | None:
     if not match:
         return None
 
-    try:
-        num = int(match.group(1))
-        unidade = match.group(2)
-    except (IndexError, ValueError):
-        return None
+    num = int(match.group(1))
+    unidade = match.group(2)
 
     if "dia" in unidade:
         return timedelta(days=num)
@@ -115,8 +109,9 @@ def parse_relative_date(texto) -> timedelta | None:
     else:
         return None
 
+
 # --- Conversor de data em português ---
-def parse_portuguese_date(date_text: str) -> datetime | None:
+def parse_portuguese_date(date_text):
     """
     Converte datas escritas em português para datetime.
     Exemplo: '10 de setembro de 2025 às 10h55'
@@ -132,7 +127,7 @@ def parse_portuguese_date(date_text: str) -> datetime | None:
     }
 
     try:
-        date_text = re.sub(r'^(Publicado|Atualizado)\s+em\s*', '', date_text, flags=re.IGNORECASE)
+        date_text = re.sub(r'^Publicado em\s*', '', date_text, flags=re.IGNORECASE)
         date_text = date_text.strip()
         # Corrige espaçamentos quebrados pela Exame
         date_text = re.sub(r'às(\d)', r'às \1', date_text)
@@ -152,17 +147,6 @@ def parse_portuguese_date(date_text: str) -> datetime | None:
                 mes = meses[mes_nome]
                 return datetime(ano, mes, dia, hora, minuto)
 
-        # Tentar padrão sem hora
-        pattern_sem_hora = r'(\d+)\s+de\s+(\w+)\s+de\s+(\d{4})'
-        match_sem_hora = re.search(pattern_sem_hora, date_text, re.IGNORECASE)
-        if match_sem_hora:
-            dia = int(match_sem_hora.group(1))
-            mes_nome = match_sem_hora.group(2).lower()
-            ano = int(match_sem_hora.group(3))
-            if mes_nome in meses:
-                mes = meses[mes_nome]
-                return datetime(ano, mes, dia) # Default to 00:00
-
         return None
     except Exception as e:
         print(f"Erro ao converter data '{date_text}': {e}")
@@ -170,52 +154,29 @@ def parse_portuguese_date(date_text: str) -> datetime | None:
 
 
 # --- Extrator de links de artigos com filtro de tempo ---
-def get_article_links_period(page_url, base_url, limit_date: datetime):
+def get_article_links_period(page_url, base_url, dias_max=30):
     """
     Busca links e títulos de artigos de uma página da Exame.
-    Filtra para manter apenas os publicados APÓS a limit_date.
-    Retorna (lista_de_links, continuar_paginando)
+    Filtra para manter apenas os publicados nos últimos X dias (padrão=7).
     """
-    try:
-        resp = requests.get(page_url, headers=headers, timeout=10)
-        resp.raise_for_status() # Lança erro se status não for 200
-    except requests.RequestException as e:
-        print(f"Erro ao buscar URL {page_url}: {e}")
-        return [], False # Parar paginação se houver erro
-
+    resp = requests.get(page_url, headers=headers)
     soup = BeautifulSoup(resp.text, "html.parser")
 
     links = []
-    continuar_paginando = True # Assume que deve continuar
-    cards = soup.select("h3 a.touch-area[href]")
-
-    if not cards:
-        print("Nenhum card de notícia encontrado. Encerrando paginação.")
-        return [], False # Para se não achar mais cards
-
-    for card in cards:
+    for card in soup.select("h3 a.touch-area[href]"):
         href = urljoin(base_url, card["href"])
         titulo = card.get_text(strip=True)
 
         # Busca informação de tempo (há X dias/horas)
         parent_div = card.find_parent("div")
         tempo_tag = parent_div.select_one("div p.title-small")
-
         if tempo_tag:
             delta = parse_relative_date(tempo_tag.get_text(strip=True))
-            if delta:
-                data_noticia = datetime.now() - delta
-                if data_noticia < limit_date:
-                    continuar_paginando = False # Encontrou notícia antiga
-                    continue # Pula esta notícia e para de paginar
+            if delta is None or delta > timedelta(days=dias_max):
+                continue  # ignora notícias antigas
 
-            links.append((titulo, href))
-        else:
-            # Se não achar data relativa, adiciona mesmo assim (pode ser antiga)
-            # Mas é melhor pecar por excesso
-            links.append((titulo, href))
-
-    return links, continuar_paginando
+        links.append((titulo, href))
+    return links
 
 
 # --- Extrator de conteúdo de um artigo ---
@@ -228,17 +189,11 @@ def get_article_content(url):
     - Data de publicação
     - Corpo da notícia (texto limpo)
     """
-    try:
-        r = requests.get(url, headers=headers, timeout=10)
-        r.raise_for_status()
-    except requests.RequestException as e:
-        print(f"Erro ao buscar conteúdo do artigo {url}: {e}")
-        return None # Retorna None se falhar
-
+    r = requests.get(url, headers=headers)
     sp = BeautifulSoup(r.text, "html.parser")
 
-    # Título principal (às vezes indexado no [1])
-    titulo_tag = sp.select_one("h1") or sp.select_one("header h1") or sp.find("h1")
+    # Título da notícia (fix: restringe ao bloco de notícia)
+    titulo_tag = sp.select_one('#news-component > div:nth-of-type(1) > div:nth-of-type(2) > h1')
     titulo = titulo_tag.get_text(strip=True) if titulo_tag else "Sem título"
 
     # Manchete (subtítulo)
@@ -250,7 +205,6 @@ def get_article_content(url):
     autor = autor_tag.get_text(strip=True) if autor_tag else None
 
     # Data de publicação
-    data_pub = None
     data_tag = sp.select_one("#news-component > div:nth-child(2) > p")
     if data_tag:
         data_pub_text = data_tag.get_text(strip=True)
@@ -264,15 +218,7 @@ def get_article_content(url):
             if delta:
                 data_pub = datetime.now() - delta
     else:
-        # Tenta outra tag de data (mais comum)
-        data_tag_alternativa = sp.select_one('p[class*="meta-post-date"]')
-        if data_tag_alternativa:
-            data_pub_text = data_tag_alternativa.get_text(strip=True)
-            data_pub = parse_portuguese_date(data_pub_text)
-            if not data_pub:
-                delta = parse_relative_date(data_pub_text)
-                if delta:
-                    data_pub = datetime.now() - delta
+        data_pub = None
 
     # Corpo da notícia
     corpo_div = sp.find("div", id="news-body")
@@ -296,7 +242,7 @@ def get_article_content(url):
 
 
 # --- Função principal ---
-def web_scrapping(ticker: str, ticker_id: int, company_name: str, news_service=None, months_ago: int = 1):
+def web_scrapping(trading_mode, ticker, ticker_id, company_name, news_service=None, vectorization=None):
     """
     Executa o scraping na Exame para uma empresa específica.
     - Monta URL da empresa
@@ -307,53 +253,28 @@ def web_scrapping(ticker: str, ticker_id: int, company_name: str, news_service=N
     company_url = converter_nome_empresa_para_url(company_name)
     base_url = f"https://exame.com/noticias-sobre/{company_url}/"
 
-    # Calcula data limite
-    dias_atras = months_ago * 30 # Aproximação de 30 dias/mês
-    limit_date = datetime.now() - timedelta(days=dias_atras)
-
     print(f"Executando web scraping Exame para: {company_name}")
     print(f"URL base: {base_url}")
-    print(f"Buscando notícias desde: {limit_date.strftime('%Y-%m-%d')}")
 
     dados = []
+    dias_max = 60
     pagina = 1
-    continuar_paginando = True
-
-    while continuar_paginando:
+    while True:
         page_url = base_url if pagina == 1 else f"{base_url}{pagina}/"
         print(f"Coletando página {pagina}: {page_url}")
-
-        artigos, continuar_paginando = get_article_links_period(page_url, base_url, limit_date=limit_date)
-
-        if not artigos and pagina == 1:
-            print(f"Nenhum artigo encontrado para {company_name} na Exame.")
-            break # Se não há artigos na primeira página, encerra
+        artigos = get_article_links_period(page_url, base_url, dias_max=dias_max)
+        if not artigos:
+            break  # se não há artigos, encerra loop
 
         for titulo, link in artigos:
             try:
                 artigo = get_article_content(link)
-                if not artigo:
-                    print(f"Falha ao obter conteúdo do link: {link}")
-                    continue
-
-                # Filtro final pela data (se disponível no artigo)
-                if artigo["data"] and artigo["data"] < limit_date:
-                    continuar_paginando = False # Garante parada se data exata for antiga
-                    continue
-
                 artigo["pln"] = processar(artigo["texto"])  # NLP
                 dados.append(artigo)
             except Exception as e:
                 print("Erro no link", link, e)
 
         pagina += 1
-        if pagina > 50: # Limite de segurança para não ficar em loop infinito
-            print("Atingiu limite de 50 páginas. Encerrando.")
-            break
-
-    if not dados:
-        print(f"Nenhuma notícia recente encontrada para {company_name} na Exame.")
-        return True # Sucesso, mas sem dados
 
     # Monta DataFrame com resultados
     df = pd.DataFrame(dados)
@@ -369,8 +290,7 @@ def web_scrapping(ticker: str, ticker_id: int, company_name: str, news_service=N
         "lemmas": df["pln"].apply(lambda x: x["lemmas"]),
     })
 
-    print(f"Encontradas {len(df_tokens)} notícias na Exame.")
-    # print(df_tokens.head())
+    print(df_tokens.head())
 
     # Se tiver news_service, salva no banco
     if news_service:
@@ -381,19 +301,14 @@ def web_scrapping(ticker: str, ticker_id: int, company_name: str, news_service=N
                 # Dados básicos da notícia
                 news_data = {
                     'url': row['link'],
-                    'data_publicacao': row['data'] if pd.notna(row['data']) else None,
+                    'data_publicacao': row['data'] if isinstance(row['data'], datetime) else None,
                     'autor': row['autor'],
                     'tipo_fonte': 'EXAME',
                     'categoria': None,
                     'sentimento': None,
                     'relevancia': int(0),  # 👈 força inteiro em vez de float
                 }
-
-                # Garantir que ticker_id é int
-                current_ticker_id = int(ticker_id) if ticker_id is not None else None
-                if not current_ticker_id:
-                    print(f"Erro: Ticker ID nulo para {ticker}. Pulando salvamento.")
-                    continue
+                ticker_id = int(ticker_id) if ticker_id is not None else None
 
                 # Processamento textual (título, manchete e corpo)
                 titulo_processed = processar(row['titulo'])
@@ -427,46 +342,38 @@ def web_scrapping(ticker: str, ticker_id: int, company_name: str, news_service=N
                 }
 
                 # Salva no banco via service externo
-                _, _, _, is_new_news = news_service.save_complete_news_data_with_ticker_id(
-                    ticker_id=current_ticker_id,
+                ticker_id, news_id, processing_ids, is_new_news = news_service.save_complete_news_data_with_ticker_id(
+                    ticker_id=ticker_id,
                     news_data=news_data,
                     text_processing_data=text_processing_data
                 )
 
-                if is_new_news:
-                    saved_count += 1
-                else:
-                    # News already existed, just log it
-                    # print(f"News already exists: {row['link']}")
-                    pass
+                vectorization.vectorize_text_by_type(row['titulo'], 'BERT', processing_ids[0])
+                vectorization.vectorize_text_by_type(row['manchete'], 'BERT', processing_ids[1])
+                vectorization.vectorize_text_by_type(row['corpo'], 'BERT', processing_ids[2])
+
+                if ticker_id and news_id:
+                    if is_new_news:
+                        saved_count += 1
+                    else:
+                        # News already existed, just log it
+                        print(f"News already exists: {row['link']}")
 
             except Exception as e:
-                print(f"Error saving news to database: {e} (Link: {row['link']})")
+                print(f"Error saving news to database: {e}")
                 continue
 
-        print(f"✅ Saved {saved_count} new news articles to database from Exame")
+        print(f"✅ Saved {saved_count} news articles to database")
     else:
         # Se não houver banco, salva CSV
-        filename = f"exame_{company_url}_ultimos_{months_ago}_meses.csv"
+        filename = f"exame_{company_url}_ultimos_7_dias.csv"
         df_tokens.to_csv(filename, index=False, encoding="utf-8-sig")
-        print(f"✅ Concluído! Notícias salvas em {filename}.")
+        print(f"✅ Concluído! Notícias dos últimos 7 dias salvas em {filename}.")
 
     return True
 
 
 # Execução direta (modo standalone)
 if __name__ == "__main__":
-    # Executa exemplo padrão para 3 meses
-    print("Executando Exame Scraper em modo standalone...")
-    ns = get_news_service()
-    if not initialize_database():
-        print("❌ Falha ao inicializar banco. Verifique conexão MySQL (e .env).")
-    else:
-        print("Buscando Ticker...")
-        test_ticker = "EMBR3"
-        tid, cname = get_news_service().save_or_get_ticker(test_ticker, "Embraer", "Industrial", "B3")
-        if tid and cname:
-            print(f"Ticker encontrado/criado: ID {tid}, Nome {cname}")
-            web_scrapping(ticker=test_ticker, ticker_id=tid, company_name=cname, news_service=ns, months_ago=3)
-        else:
-            print(f"Não foi possível obter ticker {test_ticker}")
+    # Executa exemplo padrão para Banco do Brasil
+    web_scrapping("BUY_&_HOLD", "EMBR3", "1", "Embraer", get_news_service())
