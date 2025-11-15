@@ -10,7 +10,7 @@ import string, re
 from urllib.parse import urljoin
 from datetime import timedelta, datetime
 
-from utils.news_service import get_news_service
+from src.financial_analysis.services.news_service import get_news_service
 
 
 # ---- Utilitários ----
@@ -242,7 +242,7 @@ def get_article_content(url):
 
 
 # --- Função principal ---
-def web_scrapping(trading_mode, ticker, ticker_id, company_name, news_service=None, vectorization=None):
+def web_scrapping(ticker_id, company_name, news_service=None, months_ago: int = 1):
     """
     Executa o scraping na Exame para uma empresa específica.
     - Monta URL da empresa
@@ -257,8 +257,9 @@ def web_scrapping(trading_mode, ticker, ticker_id, company_name, news_service=No
     print(f"URL base: {base_url}")
 
     dados = []
-    dias_max = 60
+    dias_max = int(months_ago * 30)
     pagina = 1
+    print(f"Searching news for the last {dias_max} days (from {months_ago} months)")
     while True:
         page_url = base_url if pagina == 1 else f"{base_url}{pagina}/"
         print(f"Coletando página {pagina}: {page_url}")
@@ -278,6 +279,10 @@ def web_scrapping(trading_mode, ticker, ticker_id, company_name, news_service=No
 
     # Monta DataFrame com resultados
     df = pd.DataFrame(dados)
+    if df.empty:
+        print(f"No recent news articles found for {company_name} on Exame.")
+        return True
+
     df_tokens = pd.DataFrame({
         "titulo": df["titulo"],
         "manchete": df["manchete"],
@@ -348,9 +353,9 @@ def web_scrapping(trading_mode, ticker, ticker_id, company_name, news_service=No
                     text_processing_data=text_processing_data
                 )
 
-                vectorization.vectorize_text_by_type(row['titulo'], 'BERT', processing_ids[0])
-                vectorization.vectorize_text_by_type(row['manchete'], 'BERT', processing_ids[1])
-                vectorization.vectorize_text_by_type(row['corpo'], 'BERT', processing_ids[2])
+                #vectorization.vectorize_text_by_type(row['titulo'], 'BERT', processing_ids[0])
+                #vectorization.vectorize_text_by_type(row['manchete'], 'BERT', processing_ids[1])
+                #vectorization.vectorize_text_by_type(row['corpo'], 'BERT', processing_ids[2])
 
                 if ticker_id and news_id:
                     if is_new_news:

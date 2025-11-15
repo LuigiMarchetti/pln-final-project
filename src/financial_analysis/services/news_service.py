@@ -5,10 +5,10 @@ Provides methods to save tickers, news articles, and text processing data
 
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List, Tuple
 from mysql.connector import Error
-from .database import get_database_manager
+from src.financial_analysis.persistance.database import get_database_manager
 
 class NewsService:
     """Service class for managing news data operations"""
@@ -364,6 +364,52 @@ class NewsService:
                 
         except Error as e:
             self.logger.error(f"Error filtering news by ticker and URLs: {e}")
+            return []
+
+    def get_recent_news_text(self, simbolo: str, months_ago: int) -> List[str]:
+        """
+        Get all raw text (title, headline, body) for a ticker from a certain date onwards.
+
+        Args:
+            simbolo: The stock symbol (e.g., "PETR4").
+            months_ago: How many months back to search.
+
+        Returns:
+            A list of raw text strings.
+        """
+        try:
+            # Calculate the start date
+            start_date = datetime.now() - timedelta(days=int(months_ago * 30.44)) # Avg days in month
+            self.logger.info(f"Fetching news text for {simbolo} since {start_date.date()}...")
+
+            with self.db_manager.get_cursor() as cursor:
+                query = """
+                    SELECT 
+                        pt.texto_bruto
+                    FROM processamento_texto pt
+                    JOIN noticias n ON pt.noticia_id = n.id
+                    JOIN tickers t ON n.ticker_id = t.id
+                    WHERE 
+                        t.simbolo = %s 
+                        AND n.data_publicacao >= %s
+                    ORDER BY
+                        n.data_publicacao DESC;
+                """
+                cursor.execute(query, (simbolo, start_date))
+                results = cursor.fetchall()
+
+                if not results:
+                    self.logger.warning(f"No recent news text found in DB for {simbolo} since {start_date.date()}")
+                    return []
+
+                # Flatten list of dictionaries and filter out empty strings
+                texts = [row['texto_bruto'] for row in results if row['texto_bruto']]
+
+                self.logger.info(f"Found {len(texts)} text fragments in database for {simbolo}.")
+                return texts
+
+        except Error as e:
+            self.logger.error(f"Error getting recent news text for {simbolo}: {e}")
             return []
 
 # Global service instance

@@ -68,7 +68,7 @@ def get_ativo(ticker, news_service):
 
 if __name__ == "__main__":
     # Test the get_ativo function
-    from news_service import NewsService
+    from src.financial_analysis.services.news_service import NewsService
     
     # Create a mock news service for testing
     news_service = NewsService()

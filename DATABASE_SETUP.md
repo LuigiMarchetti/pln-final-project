@@ -110,7 +110,7 @@ A aplicação cria três tabelas principais:
 Você pode testar a conexão com o banco de dados executando:
 
 ```python
-from utils.database import initialize_database
+from src.financial_analysis.persistance.database import initialize_database
 
 if initialize_database():
     print("Conexão com o banco de dados bem-sucedida!")

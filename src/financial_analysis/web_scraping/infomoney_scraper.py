@@ -36,9 +36,9 @@ from nltk.stem import RSLPStemmer
 from nltk.tokenize import word_tokenize
 
 # --- Utils próprios ---
-from utils import yahoo_finance
-from utils.database import initialize_database
-from utils.news_service import get_news_service
+from src.financial_analysis.services import yahoo_finance_service
+from src.financial_analysis.persistance.database import initialize_database
+from src.financial_analysis.services.news_service import get_news_service
 
 # ------------------- Configuração NLP -------------------
 
@@ -331,7 +331,7 @@ def save(df_tokens: pd.DataFrame, news_service, ticker_id: int):
 
 # ------------------- Função Principal -------------------
 
-def web_scrapping(ticker: str, ticker_id: int, company_name: str, news_service=None, months_ago: int = 1):
+def web_scrapping(ticker_id: int, company_name: str, news_service=None, months_ago: int = 1):
     """
     Fluxo principal:
     - Converte nome para URL
@@ -455,6 +455,10 @@ def web_scrapping(ticker: str, ticker_id: int, company_name: str, news_service=N
         return True
 
     df = pd.DataFrame(dados)
+    if df.empty:
+        print(f"No recent news articles found for {company_name} on Exame.")
+        return True
+
     print(f"Encontradas {len(df)} notícias na InfoMoney.")
     # print(df.head())
 
@@ -470,7 +474,7 @@ if __name__ == "__main__":
     else:
         print("Buscando Ticker...")
         test_ticker = "MGLU3"
-        ticker_id, company_name = yahoo_finance.get_ativo(test_ticker, get_news_service())
+        ticker_id, company_name = yahoo_finance_service.get_ativo(test_ticker, get_news_service())
 
         if ticker_id and company_name:
             print(f"Ticker encontrado/criado: ID {ticker_id}, Nome {company_name}")
