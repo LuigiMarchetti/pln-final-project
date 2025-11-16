@@ -26,7 +26,7 @@ except ImportError:
     GEMINI_AVAILABLE = False
 
 # Use a model capable of handling larger contexts and reasoning
-DEFAULT_ANALYSIS_MODEL = "gemini-1.5-flash-latest"
+DEFAULT_ANALYSIS_MODEL = "gemini-2.0-flash-lite"
 
 class RateLimiter:
     """

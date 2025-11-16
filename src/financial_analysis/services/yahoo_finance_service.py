@@ -33,13 +33,14 @@ def get_ativo(ticker, news_service):
     
     ticker_yahoo = yf.Ticker(ticker + B3_EXCHANGE_CODE)
     info = ticker_yahoo.get_info()
-    name = info.get("longName", "Unknown")
+    name = info.get("shortName", "Unknown")
     
     if name == "Unknown":
         raise ValueError(f"Empresa não encontrado para: {ticker}")
     
     print("Empresa encontrada com sucesso na API!")
-    name = name.removesuffix(" S.A.")
+    name = name.split(" ")[0]
+    name = name[0] + name[1:].lower()
     print(name)
 
     sector = info.get("sector", "Unknown")
@@ -74,7 +75,7 @@ if __name__ == "__main__":
     news_service = NewsService()
     
     # Test with a Brazilian stock ticker
-    test_ticker = "EMBR3"
+    test_ticker = "PETR4"
     
     try:
         print("Testing get_ativo function...")
