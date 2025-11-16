@@ -141,6 +141,29 @@ class AnalysisService:
     def _create_analysis_prompt(self, company_name: str, ticker: str, news_text: str, language: str) -> str: # NEW: Added language
         """Creates the Master Control Prompt (MCP) for the analysis task."""
 
+        # --- NOVO: Instruções e Títulos dinâmicos baseados no idioma ---
+        if language.lower().startswith("portuguese"):
+            lang_yes = "SIM, mudanças fundamentais significativas foram detectadas."
+            lang_no = "NÃO, mudanças fundamentais significativas NÃO foram detectadas."
+            lang_no_example = (
+                "As notícias se concentraram principalmente em reações de mercado de curto prazo e "
+                "classificações de analistas, que não alteram a estratégia de negócios de longo prazo "
+                "ou a posição competitiva da empresa."
+            )
+            lang_title_analysis = "Análise Fundamentalista"
+            lang_title_summary = "Resumo dos Eventos Principais"
+        else: # Padrão em Inglês
+            lang_yes = "YES, significant fundamental changes were detected."
+            lang_no = "NO, significant fundamental changes were NOT detected."
+            lang_no_example = (
+                "The news primarily focused on short-term market reactions and analyst ratings, "
+                "which do not alter the company's long-term business strategy or competitive position."
+            )
+            lang_title_analysis = "Fundamental Analysis"
+            lang_title_summary = "Key Event Summary"
+        # --- FIM DA NOVA SEÇÃO ---
+
+
         prompt = f"""
 You are an expert-level, long-term, fundamental "buy-and-hold" financial analyst.
 Your task is to analyze a collection of news articles about a specific company and provide a concise summary for a long-term investor.
@@ -152,23 +175,23 @@ Your task is to analyze a collection of news articles about a specific company a
 1.  Read all the provided news text below the "--- NEWS ---" separator. The news articles are concatenated and may contain duplicates.
 2.  Your analysis MUST focus *only* on events relevant to a long-term (5-10 year) fundamental investor.
 3.  **IGNORE** short-term price fluctuations, daily market volatility, analyst "buy/sell" ratings, and minor technical noise.
-4.  Provide your response in two distinct sections: `## Fundamental Analysis` and `## Key Event Summary`.
+4.  Provide your response in two distinct sections: `## {lang_title_analysis}` and `## {lang_title_summary}`.
 5.  Your entire response MUST be written in the following language: **{language}**
 6.  Do not include any other text, greetings, or pleasantries.
 
 ---
 
-## Fundamental Analysis
+## {lang_title_analysis}
 In this section, explicitly state whether you detect any significant, long-term **fundamental changes** to the company's business model, competitive advantages (moat), management, or long-term outlook based *only* on this news.
 
 * Examples of FUNDAMENTAL changes: Mergers & Acquisitions, new revolutionary product line, major change in regulation, new CEO with a new strategy, major factory destroyed, evidence of fraud.
 * Examples of NON-FUNDAMENTAL noise: "Stock fell 5% on profit-taking," "Analyst reiterates 'neutral' rating," "Market is down."
 
 **How to answer:**
-* **If YES:** Start with "**YES, significant fundamental changes were detected.**" Then, explain *why* in 2-3 clear bullet points.
-* **If NO:** Start with "**NO, significant fundamental changes were NOT detected.**" Then, briefly explain *what the news was about* and *why it does not constitute a fundamental change* (e.g., "The news primarily focused on short-term market reactions and analyst ratings, which do not alter the company's long-term business strategy or competitive position.").
+* **If YES:** Start with "**{lang_yes}**" Then, explain *why* in 2-3 clear bullet points.
+* **If NO:** Start with "**{lang_no}**" Then, briefly explain *what the news was about* and *why it does not constitute a fundamental change* (e.g., "{lang_no_example}").
 
-## Key Event Summary
+## {lang_title_summary}
 In this section, provide a concise, neutral, bullet-point summary of the *most important* factual events reported in the news.
 * Focus on verifiable facts (e.g., "Company reported 10% profit growth," "CEO announced a new factory in
     Manaus," "A new competitor product was launched").
