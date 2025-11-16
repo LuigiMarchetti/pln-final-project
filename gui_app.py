@@ -63,11 +63,24 @@ class Application(tk.Tk):
         self.months_entry = ttk.Entry(input_frame, textvariable=self.months_var, width=5)
         self.months_entry.grid(row=0, column=3, padx=5, pady=5, sticky="w")
 
+        # Language selection
+        ttk.Label(input_frame, text="Language:").grid(row=0, column=4, padx=5, pady=5, sticky="w")
+        self.language_var = tk.StringVar()
+        self.language_combo = ttk.Combobox(
+            input_frame,
+            textvariable=self.language_var,
+            values=["English", "Portuguese"],
+            width=12,
+            state="readonly"
+        )
+        self.language_combo.set("English")  # Default value
+        self.language_combo.grid(row=0, column=5, padx=5, pady=5, sticky="w")
+
         # Start Button
         self.start_button = ttk.Button(input_frame, text="Start Analysis", command=self.start_work)
-        self.start_button.grid(row=0, column=4, padx=10, pady=5, sticky="e")
+        self.start_button.grid(row=0, column=6, padx=10, pady=5, sticky="e")
 
-        input_frame.grid_columnconfigure(4, weight=1)  # Push button to the right
+        input_frame.grid_columnconfigure(6, weight=1)  # Push button to the right
 
         # --- 2. Progress Frame ---
         progress_frame = ttk.Labelframe(main_frame, text="Progress", padding="10")
@@ -132,6 +145,11 @@ class Application(tk.Tk):
             messagebox.showerror("Error", "Ticker symbol cannot be empty.")
             return
 
+        language = self.language_var.get()
+        if not language:
+            messagebox.showerror("Error", "Please select an output language.")
+            return
+
         try:
             months = int(self.months_var.get())
             if months <= 0:
@@ -158,7 +176,8 @@ class Application(tk.Tk):
             ticker=ticker,
             months_ago=months,
             progress_callback=self.update_progress,
-            results_callback=self.display_results
+            results_callback=self.display_results,
+            language=language
         )
 
         self.worker_thread = threading.Thread(

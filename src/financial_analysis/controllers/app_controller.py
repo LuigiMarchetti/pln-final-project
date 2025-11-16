@@ -21,7 +21,8 @@ class AppController:
 
     def __init__(self, ticker: str, months_ago: int,
                  progress_callback: Callable[[int], None],
-                 results_callback: Callable[[str], None]):
+                 results_callback: Callable[[str], None],
+                 language: str = "English"):
         """
         Args:
             ticker: The stock ticker symbol (e.g., "PETR4").
@@ -31,13 +32,14 @@ class AppController:
         """
         self.ticker = ticker
         self.months_ago = months_ago
+        self.language = language
         self.progress_callback = progress_callback
         self.results_callback = results_callback
 
         self.news_service = get_news_service()
         self.analysis_service = get_analysis_service()
 
-        logging.info(f"AppController initialized for {ticker}, {months_ago} months.")
+        logging.info(f"AppController initialized for {ticker}, {months_ago} months, Language: {language}.")
 
     def run(self):
         """
@@ -123,7 +125,8 @@ class AppController:
             analysis_result = self.analysis_service.analyze_company_fundamentals(
                 company_name=company_name,
                 ticker=self.ticker,
-                all_news_text=consolidated_text
+                all_news_text=consolidated_text,
+                language=self.language
             )
 
             if analysis_result:

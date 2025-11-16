@@ -83,6 +83,13 @@ def parse_arguments():
         help="How many months back to search for news."
     )
 
+    parser.add_argument(
+        "-l", "--language",
+        type=str,
+        default="English",
+        help="The output language for the analysis (e.g., 'English', 'Portuguese')."
+    )
+
     return parser.parse_args()
 
 def main():
@@ -100,6 +107,7 @@ def main():
         args = parse_arguments()
         ticker = args.ticker.strip().upper()
         months = args.months_ago
+        language = args.language
 
         if months <= 0:
             logging.error("Months Ago must be a positive integer.")
@@ -109,7 +117,7 @@ def main():
         logging.error(f"Error parsing arguments: {e}")
         sys.exit(1)
 
-    logging.info(f"Starting analysis for Ticker: {ticker}, Months: {months}")
+    logging.info(f"Starting analysis for Ticker: {ticker}, Months: {months}, Language: {language}")
 
     try:
         # 3. Create and run the controller
@@ -118,7 +126,8 @@ def main():
             ticker=ticker,
             months_ago=months,
             progress_callback=log_progress,
-            results_callback=log_results
+            results_callback=log_results,
+            language=language
         )
 
         # This will run the entire pipeline and log everything

@@ -100,7 +100,7 @@ class AnalysisService:
         """Check if the service was successfully configured"""
         return self.model is not None
 
-    def analyze_company_fundamentals(self, company_name: str, ticker: str, all_news_text: str) -> Optional[str]:
+    def analyze_company_fundamentals(self, company_name: str, ticker: str, all_news_text: str, language: str = "English") -> Optional[str]: # NEW: Added language
         """
         Analyzes a large block of news text for fundamental changes and key events.
 
@@ -108,6 +108,7 @@ class AnalysisService:
             company_name: The name of the company.
             ticker: The stock ticker.
             all_news_text: A single large string containing all news fragments.
+            language: The desired output language.
 
         Returns:
             A formatted string with the analysis, or None if it fails.
@@ -124,7 +125,7 @@ class AnalysisService:
                 logging.warning(f"Truncating news text from {len(all_news_text)} to {max_chars} chars.")
                 all_news_text = all_news_text[:max_chars]
 
-            prompt = self._create_analysis_prompt(company_name, ticker, all_news_text)
+            prompt = self._create_analysis_prompt(company_name, ticker, all_news_text, language)
 
             response = self._call_gemini_api(prompt)
 
@@ -137,7 +138,7 @@ class AnalysisService:
             self.logger.error(f"Error analyzing fundamentals for {ticker}: {e}", exc_info=True)
             return None
 
-    def _create_analysis_prompt(self, company_name: str, ticker: str, news_text: str) -> str:
+    def _create_analysis_prompt(self, company_name: str, ticker: str, news_text: str, language: str) -> str: # NEW: Added language
         """Creates the Master Control Prompt (MCP) for the analysis task."""
 
         prompt = f"""
@@ -152,7 +153,8 @@ Your task is to analyze a collection of news articles about a specific company a
 2.  Your analysis MUST focus *only* on events relevant to a long-term (5-10 year) fundamental investor.
 3.  **IGNORE** short-term price fluctuations, daily market volatility, analyst "buy/sell" ratings, and minor technical noise.
 4.  Provide your response in two distinct sections: `## Fundamental Analysis` and `## Key Event Summary`.
-5.  Do not include any other text, greetings, or pleasantries.
+5.  Your entire response MUST be written in the following language: **{language}**
+6.  Do not include any other text, greetings, or pleasantries.
 
 ---
 
@@ -162,7 +164,9 @@ In this section, explicitly state whether you detect any significant, long-term 
 * Examples of FUNDAMENTAL changes: Mergers & Acquisitions, new revolutionary product line, major change in regulation, new CEO with a new strategy, major factory destroyed, evidence of fraud.
 * Examples of NON-FUNDAMENTAL noise: "Stock fell 5% on profit-taking," "Analyst reiterates 'neutral' rating," "Market is down."
 
-Start this section with "YES" or "NO" (e.g., "YES, significant fundamental changes were detected.") and then explain *why* in 2-3 bullet points. If no, state "NO, only short-term noise and regular business operations were detected."
+**How to answer:**
+* **If YES:** Start with "**YES, significant fundamental changes were detected.**" Then, explain *why* in 2-3 clear bullet points.
+* **If NO:** Start with "**NO, significant fundamental changes were NOT detected.**" Then, briefly explain *what the news was about* and *why it does not constitute a fundamental change* (e.g., "The news primarily focused on short-term market reactions and analyst ratings, which do not alter the company's long-term business strategy or competitive position.").
 
 ## Key Event Summary
 In this section, provide a concise, neutral, bullet-point summary of the *most important* factual events reported in the news.
