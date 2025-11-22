@@ -1,38 +1,10 @@
-# PLN
-Nós vamos realizar análises de notícias voltadas ao mercado financeiro, realizando um web scraping dos sites de notícias e criando um algoritmo que dita a tendência de curto prazo do preço do ativo selecionado e resume os principais acontecimentos do ativo para análise (mudança de gestão, fusões, aquisições, novos produtos etc).
+# Documentação da Solução de Agentes em PLN
 
-## Base de dados textuais:
-Escolhemos 2 bases de dados distintas para não termos um viés único e não termos uma fonte única de informação caso um deles eventualmente saia fora do ar.
-A questão de quantidade de dados não é um problema também, pois temos um número gigante de notícias relacionadas a ações brasileiras que podemos verificar.
+Este documento descreve a arquitetura e funcionamento da solução avançada de Processamento de Linguagem Natural (PLN) desenvolvida para análise fundamentalista de investimentos.
 
-Info Money: [https://www.infomoney.com.br/tudo-sobre/banco-do-brasil/](https://www.infomoney.com.br/tudo-sobre/banco-do-brasil/)
-- Atualmente indiretamente pela XP Investimentos. Ela é a maior e mais importante corretora de investimentos do Brasil e tem mais de R$ 1 trilhão em ativos de clientes sob custódia, conectando investidores a uma ampla gama de produtos financeiros através das suas plataformas. Fonte: https://maisretorno.com/portal/xp-ultrapassa-r-1-trilhao-em-ativos-de-clientes-sob-sua-custodia
-- Precisa clicar no "Carregar mais" e verificar as datas das notícias conforme queremos
-
-Exame: [https://www.exame.com/noticias-sobre/banco-do-brasil](https://exame.com/noticias-sobre/banco-do-brasil/)
-- O portal de notícias Exame é um importante veículo de comunicação brasileiro, focado em negócios, economia, política, tecnologia e carreira. A plataforma, que evoluiu de uma revista para um conglomerado de negócios, oferece notícias diárias, análises aprofundadas, entrevistas e conteúdo para assinantes através do portal e de serviços como a Exame Academy e Exame Research.
-- É paginado, precisa varrer as páginas e verificar as datas das notícias conforme queremos
-
-
-
-#### Além disso, ambos sites atualmente permitem que pesquisemos as notícias e usar a url de busca deles.
-
-Info-money:
-https://www.infomoney.com.br/robots.txt/
-```txt
-User-agent: *
-Disallow: /wp-admin/
-Disallow: /preview/
-Disallow: /busca/
-Disallow: /informe-publicitario/
-```
-
-Exame:
-https://exame.com/robots.txt
-```txt
-User-agent: *
-Disallow: /wp-admin/
-Disallow: /preview/
-Disallow: /busca/
-Disallow: /informe-publicitario/
-```
+| Critério | Descrição |
+| :--- | :--- |
+| **Qual o objetivo geral do agente / RAG / solução avançada em PLN?** | O objetivo é automatizar a **análise fundamentalista** de empresas listadas na B3, focando na estratégia de longo prazo ("Buy & Hold"). O sistema visa identificar **quebras de tese de investimento** e resumir eventos chave, fornecendo três perspectivas distintas para auxiliar na tomada de decisão: uma **Otimista** (Bullish), uma **Pessimista** (Bearish) e uma **Neutra** (Juiz). |
+| **Quais as entradas do sistema? Qual parte da base de dados ele irá utilizar?** | **Entradas:** Ticker da ação (ex: `PETR4`), horizonte de tempo (ex: `12` meses) e idioma de saída (Português/Inglês).<br><br>**Base de Dados:** O sistema utiliza um banco MySQL (`investment_news`).<br><br>**Dados Utilizados:** O sistema recupera e consolida o **texto bruto** armazenado na tabela `processamento_texto`, cruzando com a tabela `noticias` para filtrar os artigos relevantes pelo `ticker_id` e pela `data_publicacao` dentro da janela de tempo especificada. |
+| **Qual o fluxo “agêntico”? Quais etapas e processamentos? Qual(is) modelo(s) de linguagem serão empregados? Como?** | **Fluxo do Processo:**<br>1. **Coleta de Dados:** Execução de scrapers (InfoMoney e Exame) para capturar notícias recentes e armazená-las no banco de dados.<br>2. **Recuperação e Consolidação:** O `AppController` busca todos os fragmentos de texto relevantes no banco e os unifica em um único contexto.<br>3. **Arquitetura Multi-Agente:** O `MultiAgentAnalysisService` orquestra três chamadas ao LLM:<br>   - *Agente Otimista:* Analisa o texto buscando oportunidades, vantagens competitivas e crescimento.<br>   - *Agente Pessimista:* Analisa o texto buscando riscos, endividamento e ameaças operacionais.<br>   - *Agente Neutro (Juiz):* Recebe as análises dos dois agentes anteriores + o texto bruto das notícias. Ele julga se houve uma "quebra de tese" estrutural (ex: diluição, troca de gestão, fraude) com base em critérios estritos definidos no prompt.<br><br>**Modelo de Linguagem:** Utiliza o **Google Gemini** (modelo `gemini-2.0-flash-lite`) configurado com temperatura 0.7 para equilibrar criatividade e precisão. |
+| **Quais as saídas esperadas e metodologias para avaliação dos resultados?** | **Saídas Esperadas:** Um relatório consolidado em Markdown contendo:<br>1. Análise detalhada da Perspectiva Otimista.<br>2. Análise detalhada da Perspectiva Pessimista.<br>3. Análise Fundamentalista (Veredito do Juiz: SIM/NÃO para mudanças estruturais).<br>4. Resumo fatual dos principais eventos.<br><br>**Metodologia de Avaliação:** A avaliação é qualitativa, verificando a capacidade do "Agente Juiz" de distinguir ruído de mercado (ex: queda de 5% na ação) de eventos fundamentais (ex: aumento de capital, fusões, troca de CEO), conforme as instruções de "gatilhos rígidos" (hard triggers) implementadas nos prompts. |
