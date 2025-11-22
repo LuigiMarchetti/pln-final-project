@@ -184,7 +184,7 @@ Your task is to analyze a collection of news articles about a specific company a
 ## {lang_title_analysis}
 In this section, explicitly state whether you detect any significant, long-term **fundamental changes** to the company's business model, competitive advantages (moat), management, or long-term outlook based *only* on this news.
 
-* Examples of FUNDAMENTAL changes: Mergers & Acquisitions, new revolutionary product line, major change in regulation, new CEO with a new strategy, major factory destroyed, evidence of fraud.
+* Examples of FUNDAMENTAL changes: Mergers & Acquisitions, new revolutionary product line, major change in regulation, new CEO with a new strategy, major factory destroyed, evidence of fraud, selling participation in a company it owns.
 * Examples of NON-FUNDAMENTAL noise: "Stock fell 5% on profit-taking," "Analyst reiterates 'neutral' rating," "Market is down."
 
 **How to answer:**
