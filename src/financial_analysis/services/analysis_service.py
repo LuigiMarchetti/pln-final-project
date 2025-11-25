@@ -127,7 +127,7 @@ class MultiAgentAnalysisService:
             pessimistic_prompt = self._create_pessimistic_prompt(company_name, ticker, all_news_text, language)
             pessimistic_result = self._call_agent("Pessimistic Agent", pessimistic_prompt) or "Analysis failed."
 
-            # 3. Call Neutral Analyst (Judge) - NOW receives the previous two analyses
+            # 3. Call Neutral Analyst (Judge)
             neutral_prompt = self._create_neutral_prompt(
                 company_name,
                 ticker,

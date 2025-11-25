@@ -7,7 +7,6 @@ import logging
 import threading
 from typing import Optional
 
-# Import the new controller that wraps the application logic
 from src.financial_analysis.controllers.app_controller import AppController
 
 

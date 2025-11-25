@@ -4,10 +4,10 @@ CLI Application for the Financial News Scraper and Analyzer
 Runs the complete analysis pipeline from the command line.
 
 Usage:
-    python cli_app.py [TICKER] [MONTHS_AGO]
+    python cli_app.py [TICKER] [MONTHS_AGO] -l [LANGUAGE]
 
 Example:
-    python cli_app.py PETR4 3
+    python cli_app.py PETR4 3 -l Portuguese
 """
 
 import argparse

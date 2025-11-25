@@ -6,14 +6,12 @@ Handles scraping, database operations, and analysis.
 import logging
 from typing import Callable
 
-# Import existing project modules
 from src.financial_analysis.persistance.database import initialize_database
 from src.financial_analysis.services.news_service import get_news_service
 from src.financial_analysis.services import yahoo_finance_service
 from src.financial_analysis.web_scraping.exame_scraper import web_scrapping as exame_web_scrapping
 from src.financial_analysis.web_scraping.infomoney_scraper import web_scrapping as infomoney_web_scrapping
 
-# Import the new analysis service
 from src.financial_analysis.services.analysis_service import get_analysis_service
 
 class AppController:
